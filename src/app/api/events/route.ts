@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // BACKEND_ENGINEER_AGENT: Events CRUD API
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";

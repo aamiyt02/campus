@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // BACKEND_ENGINEER_AGENT: Sync emails → extract events → store in DB
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
