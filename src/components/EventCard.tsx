@@ -118,9 +118,9 @@ export default function EventCard({ event, onUpdate }: EventCardProps) {
         setLoading(false);
       }
     },
-    },
     [user, event.id, onUpdate]
   );
+
 
   const cat = CATEGORY_CONFIG[event.category] || CATEGORY_CONFIG.general;
   const deadlineSoon = isDeadlineSoon(event.deadline);
