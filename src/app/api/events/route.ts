@@ -1,14 +1,20 @@
 export const dynamic = "force-dynamic";
 // BACKEND_ENGINEER_AGENT: Events CRUD API
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getUserIdFromToken } from "@/lib/auth-server";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const authHeader = req.headers.get("Authorization");
+    const token = authHeader?.split(" ")[1];
+    
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const userId = await getUserIdFromToken(token);
+    if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -22,7 +28,7 @@ export async function GET(req: NextRequest) {
 
     // Build where clause (user-scoped for data isolation)
     const where: any = {
-      userId: session.user.id,
+      userId: userId,
       isDismissed: false,
     };
 

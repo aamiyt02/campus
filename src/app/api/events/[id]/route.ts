@@ -1,7 +1,6 @@
 // BACKEND_ENGINEER_AGENT: Single event actions (bookmark, dismiss, read)
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getUserIdFromToken } from "@/lib/auth-server";
 import { prisma } from "@/lib/prisma";
 
 export async function PATCH(
@@ -19,7 +18,7 @@ export async function PATCH(
 
     // Verify event belongs to user (data isolation)
     const event = await prisma.event.findFirst({
-      where: { id, userId: session.user.id },
+      where: { id, userId: userId },
     });
 
     if (!event) {
@@ -64,7 +63,7 @@ export async function DELETE(
 
     // Verify event belongs to user
     const event = await prisma.event.findFirst({
-      where: { id, userId: session.user.id },
+      where: { id, userId: userId },
     });
 
     if (!event) {

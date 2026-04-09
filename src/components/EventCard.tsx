@@ -12,6 +12,7 @@ import {
   AlertCircle,
   User,
 } from "lucide-react";
+import { useAuth } from "@/lib/AuthContext";
 
 interface Event {
   id: string;
@@ -93,15 +94,21 @@ function isDeadlineSoon(deadline: string | null): boolean {
 }
 
 export default function EventCard({ event, onUpdate }: EventCardProps) {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const updateEvent = useCallback(
     async (data: Partial<Event>) => {
+      if (!user) return;
       setLoading(true);
       try {
+        const token = await user.getIdToken();
         await fetch(`/api/events/${event.id}`, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
           body: JSON.stringify(data),
         });
         onUpdate();
@@ -111,7 +118,8 @@ export default function EventCard({ event, onUpdate }: EventCardProps) {
         setLoading(false);
       }
     },
-    [event.id, onUpdate]
+    },
+    [user, event.id, onUpdate]
   );
 
   const cat = CATEGORY_CONFIG[event.category] || CATEGORY_CONFIG.general;

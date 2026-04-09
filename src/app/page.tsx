@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession, signIn } from "next-auth/react";
+import { useAuth } from "@/lib/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import {
@@ -15,14 +15,14 @@ import {
 } from "lucide-react";
 
 export default function LandingPage() {
-  const { data: session, status } = useSession();
+  const { user, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (session) router.push("/dashboard");
-  }, [session, router]);
+    if (user) router.push("/dashboard");
+  }, [user, router]);
 
-  if (status === "loading") {
+  if (loading) {
     return (
       <div
         style={{
@@ -93,11 +93,11 @@ export default function LandingPage() {
           </div>
           <button
             className="btn-primary"
-            onClick={() => signIn("google")}
+            onClick={() => router.push("/auth/signin")}
             id="signin-btn-nav"
           >
             <Mail size={16} />
-            Sign in with Google
+            Sign in
           </button>
         </div>
       </nav>
@@ -170,12 +170,12 @@ export default function LandingPage() {
 
         <button
           className="btn-primary"
-          onClick={() => signIn("google")}
+          onClick={() => router.push("/auth/signin")}
           id="signin-btn-hero"
           style={{ padding: "14px 32px", fontSize: "1rem", borderRadius: 14 }}
         >
           <Mail size={18} />
-          Connect Gmail & Get Started
+          Get Started
           <ArrowRight size={16} />
         </button>
 

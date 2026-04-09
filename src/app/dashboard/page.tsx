@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useSession, signOut } from "next-auth/react";
+import { useAuth } from "@/lib/AuthContext";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import {
   RefreshCw,
@@ -64,7 +66,7 @@ const SORT_OPTIONS = [
 ];
 
 export default function DashboardPage() {
-  const { data: session, status } = useSession();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const [events, setEvents] = useState<Event[]>([]);
@@ -85,13 +87,15 @@ export default function DashboardPage() {
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (status === "unauthenticated") router.push("/");
-  }, [status, router]);
+    if (!authLoading && !user) router.push("/");
+  }, [user, authLoading, router]);
 
   // Fetch events
   const fetchEvents = useCallback(async () => {
+    if (!user) return;
     setLoading(true);
     try {
+      const token = await user.getIdToken();
       const params = new URLSearchParams({
         category,
         sort,
@@ -101,7 +105,9 @@ export default function DashboardPage() {
       if (search) params.set("search", search);
       if (bookmarkedOnly) params.set("bookmarked", "true");
 
-      const res = await fetch(`/api/events?${params}`);
+      const res = await fetch(`/api/events?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await res.json();
 
       if (res.ok) {
@@ -113,13 +119,17 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [category, sort, search, bookmarkedOnly, page]);
+  }, [user, category, sort, search, bookmarkedOnly, page]);
 
   // Fetch stats
   const fetchStats = useCallback(async () => {
+    if (!user) return;
     setStatsLoading(true);
     try {
-      const res = await fetch("/api/stats");
+      const token = await user.getIdToken();
+      const res = await fetch("/api/stats", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await res.json();
       if (res.ok) setStats(data);
     } catch (err) {
@@ -127,21 +137,26 @@ export default function DashboardPage() {
     } finally {
       setStatsLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
-    if (session) {
+    if (user) {
       fetchEvents();
       fetchStats();
     }
-  }, [session, fetchEvents, fetchStats]);
+  }, [user, fetchEvents, fetchStats]);
 
   // Sync emails
   const handleSync = async () => {
+    if (!user) return;
     setSyncing(true);
     setSyncResult(null);
     try {
-      const res = await fetch("/api/sync", { method: "POST" });
+      const token = await user.getIdToken();
+      const res = await fetch("/api/sync", { 
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await res.json();
 
       if (data.success) {
@@ -169,7 +184,7 @@ export default function DashboardPage() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  if (status === "loading") {
+  if (authLoading) {
     return (
       <div
         style={{
@@ -189,7 +204,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (!session) return null;
+  if (!user) return null;
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-primary)" }}>
@@ -249,9 +264,9 @@ export default function DashboardPage() {
             </button>
 
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              {session.user.image && (
+              {user.photoURL && (
                 <img
-                  src={session.user.image}
+                  src={user.photoURL}
                   alt=""
                   style={{
                     width: 32,
@@ -263,7 +278,7 @@ export default function DashboardPage() {
               )}
               <button
                 className="btn-ghost"
-                onClick={() => signOut({ callbackUrl: "/" })}
+                onClick={async () => { await signOut(auth); router.push("/"); }}
                 id="signout-btn"
                 style={{ padding: "6px 12px" }}
               >

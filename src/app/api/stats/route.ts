@@ -1,18 +1,22 @@
 export const dynamic = "force-dynamic";
 // BACKEND_ENGINEER_AGENT: Dashboard stats API
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { getUserIdFromToken } from "@/lib/auth-server";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const authHeader = req.headers.get("Authorization");
+    const token = authHeader?.split(" ")[1];
+    
+    if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = session.user.id;
+    const userId = await getUserIdFromToken(token);
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const [
       totalEvents,

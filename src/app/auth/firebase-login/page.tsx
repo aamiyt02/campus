@@ -1,8 +1,6 @@
-"use client";
-
 import FirebaseLogin from "@/components/FirebaseLogin";
 
-export default function SignInPage() {
+export default function FirebaseLoginPage() {
   return (
     <div
       style={{
@@ -10,10 +8,9 @@ export default function SignInPage() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "var(--bg-primary)",
+        background: "var(--bg-primary, #ffffff)",
       }}
     >
-      {/* Ambient glow */}
       <div
         style={{
           position: "fixed",
@@ -22,8 +19,7 @@ export default function SignInPage() {
           transform: "translate(-50%, -50%)",
           width: "40vw",
           height: "40vh",
-          background:
-            "radial-gradient(ellipse, rgba(99,102,241,0.1) 0%, transparent 70%)",
+          background: "radial-gradient(ellipse, rgba(99,102,241,0.1) 0%, transparent 70%)",
           pointerEvents: "none",
         }}
       />
@@ -31,4 +27,3 @@ export default function SignInPage() {
     </div>
   );
 }
-

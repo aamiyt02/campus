@@ -1,20 +1,24 @@
 export const dynamic = "force-dynamic";
 // BACKEND_ENGINEER_AGENT: Sync emails → extract events → store in DB
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getUserIdFromToken } from "@/lib/auth-server";
 import { prisma } from "@/lib/prisma";
 import { fetchGmailMessages } from "@/lib/gmail";
 import { extractEventFromEmail, isLikelyEventEmail } from "@/lib/extraction";
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const authHeader = req.headers.get("Authorization");
+    const token = authHeader?.split(" ")[1];
+    
+    if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = session.user.id;
+    const userId = await getUserIdFromToken(token);
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     // Get user's access token from the Account table
     const account = await prisma.account.findFirst({
