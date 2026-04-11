@@ -15,9 +15,9 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = await getUserIdFromToken(token);
+    const { userId, error: authError } = await getUserIdFromToken(token);
     if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: authError || "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
@@ -68,9 +68,9 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = await getUserIdFromToken(token);
+    const { userId, error: authError } = await getUserIdFromToken(token);
     if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: authError || "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;

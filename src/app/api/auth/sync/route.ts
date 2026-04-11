@@ -10,10 +10,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing ID token" }, { status: 400 });
     }
 
-    const userId = await getUserIdFromToken(idToken);
-
+    const { userId, error: authError } = await getUserIdFromToken(idToken);
     if (!userId) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+      return NextResponse.json({ error: authError || "Invalid token" }, { status: 401 });
     }
 
     // If Google Access Token is provided, store it in the Account table
