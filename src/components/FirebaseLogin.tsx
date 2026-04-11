@@ -6,6 +6,7 @@ import {
   GoogleAuthProvider, 
   fetchSignInMethodsForEmail,
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   linkWithCredential,
   AuthCredential,
   sendSignInLinkToEmail
@@ -110,6 +111,8 @@ export default function FirebaseLogin() {
     }
   };
 
+  const [isSignUp, setIsSignUp] = useState(false);
+
   // Email/Password Trigger (either as primary or as resolution)
   const handleEmailSignIn = async (e?: FormEvent) => {
     if (e) e.preventDefault();
@@ -120,7 +123,13 @@ export default function FirebaseLogin() {
     const targetEmail = conflictState ? conflictState.email : email;
 
     try {
-      const result = await signInWithEmailAndPassword(auth, targetEmail, password);
+      let result;
+      if (isSignUp && !conflictState) {
+        result = await createUserWithEmailAndPassword(auth, targetEmail, password);
+      } else {
+        result = await signInWithEmailAndPassword(auth, targetEmail, password);
+      }
+      
       const idToken = await result.user.getIdToken();
 
       // Sync with backend
@@ -143,8 +152,14 @@ export default function FirebaseLogin() {
     } catch (error: any) {
       if (error.code === "auth/wrong-password") {
         setErrorMsg("Incorrect password. Please try again or use the Magic Link option.");
+      } else if (error.code === "auth/email-already-in-use") {
+        setErrorMsg("Email already in use. Try logging in instead.");
+      } else if (error.code === "auth/weak-password") {
+        setErrorMsg("Password should be at least 6 characters.");
+      } else if (error.code === "auth/user-not-found" && !isSignUp) {
+        setErrorMsg("Account does not exist. Click 'Sign Up' below to create one.");
       } else {
-        setErrorMsg("Failed to sign in with Email. Please verify your credentials.");
+        setErrorMsg(`Failed to ${isSignUp ? 'sign up' : 'sign in'}. Please verify your credentials.`);
       }
       console.error(error);
     } finally {
@@ -248,9 +263,9 @@ export default function FirebaseLogin() {
         <Zap size={26} color="white" />
       </div>
 
-      <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: 8 }}>Firebase Auth</h1>
+      <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: 8 }}>{isSignUp ? 'Create Account' : 'Firebase Auth'}</h1>
       <p style={{ color: "var(--text-secondary)", fontSize: "0.875rem", marginBottom: 32, lineHeight: 1.6 }}>
-        Sign in to your account with conflict resolution.
+        {isSignUp ? 'Join us to organize your events with AI.' : 'Sign in to your account with conflict resolution.'}
       </p>
 
       {errorMsg && (
@@ -281,9 +296,19 @@ export default function FirebaseLogin() {
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="input-field" placeholder="••••••••" style={{ width: "100%", padding: "12px", borderRadius: 8, border: "1px solid var(--border)" }} />
         </div>
         <button type="submit" className="btn-primary" disabled={loading} style={{ width: "100%", justifyContent: "center", padding: "14px 24px" }}>
-          {loading ? <RefreshCw className="animate-spin" size={18} /> : "Login with Email"}
+          {loading ? <RefreshCw className="animate-spin" size={18} /> : (isSignUp ? "Create Account" : "Login with Email")}
         </button>
       </form>
+      
+      <p style={{ marginTop: 24, fontSize: "0.875rem", color: "var(--text-secondary)" }}>
+        {isSignUp ? "Already have an account?" : "Don't have an account?"}
+        <button 
+          onClick={() => setIsSignUp(!isSignUp)}
+          style={{ background: "transparent", border: "none", color: "var(--accent)", cursor: "pointer", marginLeft: 6, fontWeight: 600 }}
+        >
+          {isSignUp ? "Back to Login" : "Sign Up"}
+        </button>
+      </p>
     </div>
   );
 }
