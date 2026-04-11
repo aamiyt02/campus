@@ -9,7 +9,9 @@
     "start": "next start"
   },
   "dependencies": {
-    "@prisma/client": "^5.22.0",
+    "@prisma/client": "^7.0.0",
+    "@prisma/adapter-pg": "^7.0.0",
+    "pg": "^8.13.1",
     "date-fns": "^4.1.0",
     "firebase": "^12.11.0",
     "googleapis": "^171.4.0",
@@ -26,7 +28,7 @@
     "dotenv": "^17.4.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
-    "prisma": "^5.22.0",
+    "prisma": "^7.0.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
