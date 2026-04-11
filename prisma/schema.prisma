@@ -2,7 +2,8 @@
 // Optimized for free-tier (Neon/Supabase), handles 100+ users
 
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
