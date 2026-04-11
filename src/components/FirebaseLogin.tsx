@@ -55,6 +55,8 @@ export default function FirebaseLogin() {
     setLoading(true);
     setErrorMsg(null);
     const provider = new GoogleAuthProvider();
+    // Request Gmail readonly access
+    provider.addScope('https://www.googleapis.com/auth/gmail.readonly');
     // Force prompt to select account, preventing loop
     provider.setCustomParameters({ prompt: 'select_account' });
 

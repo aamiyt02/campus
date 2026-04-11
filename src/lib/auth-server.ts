@@ -6,6 +6,10 @@ export async function getUserIdFromToken(token: string) {
   try {
     // Verify token with Firebase Auth REST API
     // This is a lightweight way to verify an ID token without firebase-admin
+    if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
+      console.error("CRITICAL: NEXT_PUBLIC_FIREBASE_API_KEY is missing on the server!");
+    }
+
     const response = await fetch(
       `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}`,
       {
@@ -20,7 +24,7 @@ export async function getUserIdFromToken(token: string) {
     const data = await response.json();
 
     if (!response.ok || !data.users || data.users.length === 0) {
-      console.error("Firebase token verification failed:", data.error);
+      console.error("Firebase token verification failed. Status:", response.status, "Error:", data.error);
       return null;
     }
 
