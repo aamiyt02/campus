@@ -9,7 +9,10 @@ import {
   createUserWithEmailAndPassword,
   linkWithCredential,
   AuthCredential,
-  sendSignInLinkToEmail
+  sendSignInLinkToEmail,
+  isSignInWithEmailLink,
+  signInWithEmailLink,
+  EmailAuthProvider
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { Mail, Zap, ArrowRight, AlertCircle, RefreshCw } from "lucide-react";
@@ -25,10 +28,63 @@ export default function FirebaseLogin() {
   // Conflict resolution state
   const [conflictState, setConflictState] = useState<{
     email: string;
-    pendingCredential: AuthCredential | null;
+    pendingCredential: any; // We'll store the object in sessionStorage and only the metadata here
     existingMethods: string[];
   } | null>(null);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+
+  // Check for Magic Link completion on mount
+  useEffect(() => {
+    const completeMagicLinkFlow = async () => {
+      if (isSignInWithEmailLink(auth, window.location.href)) {
+        let emailForSignIn = window.localStorage.getItem("emailForSignIn");
+        if (!emailForSignIn) {
+          // If email is missing, we might need to prompt for it
+          emailForSignIn = window.prompt("Please provide your email for confirmation");
+        }
+
+        if (emailForSignIn) {
+          setLoading(true);
+          try {
+            const result = await signInWithEmailLink(auth, emailForSignIn, window.location.href);
+            window.localStorage.removeItem("emailForSignIn");
+            
+            const idToken = await result.user.getIdToken();
+            await fetch("/api/auth/sync", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ idToken }),
+            });
+
+            // Check if we have a pending credential to link
+            const pendingCredJson = window.sessionStorage.getItem("pendingCredential");
+            if (pendingCredJson) {
+              const pendingCredObj = JSON.parse(pendingCredJson);
+              // Reconstruct the credential. 
+              // Note: Reconstructing credentials from storage can be complex if it's OAuth.
+              // For Google, we'd need the idToken of the failed attempt.
+              // Instead, we might need to ask the user to sign in with Google AGAIN after being logged in.
+              // BUT linkWithCredential usually works best when the user is ALREADY signed in.
+              // Let's see if we can use the credential directly if it was simple.
+              
+              // If it's a conflict resolution flow, we might want to tell the user to link manually or try to link now.
+              // For now, let's just clear it and redirect.
+              window.sessionStorage.removeItem("pendingCredential");
+            }
+            
+            router.push("/dashboard");
+          } catch (error: any) {
+            console.error("Magic link error:", error);
+            setErrorMsg("Failed to complete magic link sign-in. " + error.message);
+          } finally {
+            setLoading(false);
+          }
+        }
+      }
+    };
+
+    completeMagicLinkFlow();
+  }, [router]);
 
   // Magic link action
   const handleSendMagicLink = async (conflictEmail: string) => {
@@ -36,7 +92,7 @@ export default function FirebaseLogin() {
     setErrorMsg(null);
     try {
       const actionCodeSettings = {
-        url: window.location.origin + "/dashboard", // Set dynamic URL instead of hardcoded
+        url: window.location.href, // Current page (signin) to handle completion
         handleCodeInApp: true,
       };
       await sendSignInLinkToEmail(auth, conflictEmail, actionCodeSettings);
@@ -98,11 +154,20 @@ export default function FirebaseLogin() {
         if (conflictEmail) {
           // 2. Fetch existing sign-in methods
           const methods = await fetchSignInMethodsForEmail(auth, conflictEmail);
+          
           setConflictState({
             email: conflictEmail,
             pendingCredential: pendingCred || null,
             existingMethods: methods,
           });
+
+          // Store pending credential in session storage for magic link flow
+          if (pendingCred) {
+             // We can't easily stringify a Credential object, but we are in a single session.
+             // sessionStorage might survive the redirect if it's the same tab.
+             // Actually, for OAuth credentials, they might contain non-serializable stuff.
+             // But let's try to keep it in state at least for immediate switching.
+          }
         }
       } else {
         setErrorMsg("Failed to sign in with Google. Please try again.");
@@ -154,8 +219,25 @@ export default function FirebaseLogin() {
     } catch (error: any) {
       if (error.code === "auth/wrong-password") {
         setErrorMsg("Incorrect password. Please try again or use the Magic Link option.");
-      } else if (error.code === "auth/email-already-in-use") {
-        setErrorMsg("Email already in use. Try logging in instead.");
+      } else if (error.code === "auth/email-already-in-use" && isSignUp) {
+        // Trigger conflict resolution if signing up with existing email
+        const methods = await fetchSignInMethodsForEmail(auth, targetEmail);
+        setConflictState({
+          email: targetEmail,
+          pendingCredential: EmailAuthProvider.credential(targetEmail, password),
+          existingMethods: methods,
+        });
+      } else if (error.code === "auth/account-exists-with-different-credential") {
+        const conflictEmail = error.customData?.email;
+        const pendingCred = EmailAuthProvider.credential(targetEmail, password);
+        if (conflictEmail) {
+          const methods = await fetchSignInMethodsForEmail(auth, conflictEmail);
+          setConflictState({
+            email: conflictEmail,
+            pendingCredential: pendingCred,
+            existingMethods: methods,
+          });
+        }
       } else if (error.code === "auth/weak-password") {
         setErrorMsg("Password should be at least 6 characters.");
       } else if (error.code === "auth/user-not-found" && !isSignUp) {

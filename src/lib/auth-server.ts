@@ -35,12 +35,19 @@ export async function getUserIdFromToken(token: string) {
       where: { id: firebaseUid },
     });
 
-    if (!user) {
+    if (!user && firebaseUser.email) {
+      // Check if user exists with this email but different ID
       const existingUserByEmail = await prisma.user.findUnique({
         where: { email: firebaseUser.email },
       });
 
       if (existingUserByEmail) {
+        // If the ID is different, we have a mismatch. 
+        // In a strict firebase_uid mapping system, the DB ID should be the firebaseUid.
+        // Since we can't easily change @id in Prisma, we'll return the existing ID
+        // but log this as a potential inconsistency.
+        // However, the best approach for consistency is to ensure we use the same ID everywhere.
+        console.warn(`User mismatch: Email ${firebaseUser.email} has DB ID ${existingUserByEmail.id} but Firebase UID ${firebaseUid}`);
         return { userId: existingUserByEmail.id, error: null };
       }
 
