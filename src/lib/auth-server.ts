@@ -61,6 +61,10 @@ export async function getUserIdFromToken(token: string) {
       });
     }
 
+    if (!user) {
+      return { userId: null, error: "Could not find or create user account" };
+    }
+
     return { userId: user.id, error: null };
   } catch (error: any) {
     console.error("Error in getUserIdFromToken:", error);
